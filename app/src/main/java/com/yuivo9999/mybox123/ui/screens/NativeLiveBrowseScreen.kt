@@ -1,47 +1,84 @@
 package com.yuivo9999.mybox123.ui.screens
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yuivo9999.mybox123.MyBoxApplication
-import com.yuivo9999.mybox123.data.source.NativeContentSource
+import com.yuivo9999.mybox123.ui.theme.MyBoxAmber
+import com.yuivo9999.mybox123.ui.theme.MyBoxBackground
+import com.yuivo9999.mybox123.ui.theme.MyBoxBorder
+import com.yuivo9999.mybox123.ui.theme.MyBoxGold
+import com.yuivo9999.mybox123.ui.theme.MyBoxGoldLight
+import com.yuivo9999.mybox123.ui.theme.MyBoxHeart
+import com.yuivo9999.mybox123.ui.theme.MyBoxOutline
+import com.yuivo9999.mybox123.ui.theme.MyBoxSurface
 import com.yuivo9999.mybox123.ui.theme.MyBoxSurfaceRaised
-import com.yuivo9999.mybox123.ui.theme.LocalAppAppearance
+import com.yuivo9999.mybox123.ui.theme.MyBoxTextMuted
+import com.yuivo9999.mybox123.ui.theme.MyBoxTextPrimary
 import com.yuivo9999.mybox123.ui.theme.MyBoxTextSecondary
 import org.json.JSONObject
 
-/** Native live source/channel browser with the user-authorized Media3 playback route. */
 @Composable
 fun NativeLiveBrowseScreen(
     modifier: Modifier = Modifier,
@@ -53,7 +90,9 @@ fun NativeLiveBrowseScreen(
     val factory = remember(application) { liveBrowseViewModelFactory(application) }
     val vm: LiveBrowseViewModel = viewModel(factory = factory)
     val state by vm.uiState.collectAsStateWithLifecycle()
-    val appearance = LocalAppAppearance.current
+
+    var sourceMenuExpanded by remember { mutableStateOf(false) }
+    var showSearchBar by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(vm) {
         vm.loadSources()
@@ -102,115 +141,392 @@ fun NativeLiveBrowseScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().padding(horizontal = appearance.outerPadding.dp, vertical = appearance.outerPadding.dp),
-        verticalArrangement = Arrangement.spacedBy(appearance.itemSpacing.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(MyBoxBackground)
+            .statusBarsPadding()
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("直播频道", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("原生频道浏览 · Media3 播放", style = MaterialTheme.typography.bodySmall, color = MyBoxTextSecondary)
-            }
-            OutlinedButton(onClick = { vm.loadSources(force = true) }, enabled = !state.sourcesLoading) { Text("刷新源") }
-        }
-
-        Text("选择直播源", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        if (state.sourcesLoading && state.sources.isEmpty()) {
-            CircularProgressIndicator()
-        } else if (state.sources.isEmpty()) {
-            StatusCard(if (state.sourceError != null) "读取直播源失败：${state.sourceError}" else "暂无直播源。请先在“我的 - 内容源”添加并启用直播源。")
-            if (state.sourceError != null) Button(onClick = { vm.loadSources(force = true) }, enabled = !state.sourcesLoading) { Text("重试") }
-        } else {
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.sources.forEach { source ->
-                    if (source.sourceId == state.selectedSourceId) Button(onClick = {}, enabled = false) { Text(source.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    else OutlinedButton(onClick = { vm.selectSource(source.sourceId) }) {
-                        Text(source.name + if (source.enabled) "" else "（停用）", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+        // 1. Top Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tv,
+                        contentDescription = null,
+                        tint = MyBoxGold,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = "TVBOX 4K 影音",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MyBoxGold,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
                 }
+                Text(
+                    text = "直播中心",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MyBoxTextPrimary
+                )
             }
-            selectedSource?.let { source ->
-                Text("${source.name} · ${if (source.enabled) "已启用" else "已停用"} · ${source.status}", style = MaterialTheme.typography.bodySmall, color = MyBoxTextSecondary)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = { vm.refreshChannels() }, enabled = !state.channelsLoading && selectedSource?.enabled == true) {
-                    Text(if (state.channelsLoading) "正在读取…" else if (state.channels.isEmpty()) "加载频道" else "刷新频道")
-                }
-                Text("${state.channels.size} 个频道", style = MaterialTheme.typography.bodySmall, color = MyBoxTextSecondary)
-            }
-        }
 
-        state.sourceError?.let { StatusCard("直播源列表读取失败：$it") }
-        state.channelError?.let { StatusCard("频道读取失败：$it") }
-        state.message?.let { StatusCard(it) }
-        state.navigationMessage?.let { StatusCard(it) }
-
-        if (state.channels.isNotEmpty()) {
-            OutlinedTextField(
-                value = state.keyword,
-                onValueChange = vm::updateKeyword,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("搜索频道或分组") },
-            )
-            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                categories.forEach { category ->
-                    if (category == state.selectedCategory) Button(onClick = {}, enabled = false) { Text(category) }
-                    else OutlinedButton(onClick = { vm.selectCategory(category) }) { Text(category) }
-                }
-            }
-            if (filtered.isEmpty()) StatusCard("当前条件下没有匹配频道。")
-            else LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(appearance.itemSpacing.dp)) {
-                grouped.forEach { (category, channels) ->
-                    if (state.selectedCategory == LiveBrowseViewModel.ALL_CATEGORIES) {
-                        item(key = "group:$category") {
-                            Text("$category · ${channels.size}", modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 1.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Source Selector Pill
+                Box {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MyBoxSurfaceRaised,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MyBoxBorder),
+                        modifier = Modifier.clickable { sourceMenuExpanded = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(MyBoxGold)
+                            )
+                            Text(
+                                text = selectedSource?.name?.take(6) ?: "内置央卫视",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MyBoxTextPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
-                    items(channels, key = { it.optString("sourceChannelId").ifBlank { it.optString("sourceItemId") + ":" + it.optString("name") } }) { channel ->
-                        LiveChannelCard(
-                            channel = channel,
-                            favorite = vm.isFavorite(channel),
-                            busy = state.mutatingFavoriteId == channel.optString("sourceChannelId"),
-                            compact = appearance.compact,
-                            listStyle = appearance.listCards,
-                            onFavorite = { vm.addFavorite(channel) },
-                            onPlay = { vm.openPlayback(channel) },
+
+                    DropdownMenu(
+                        expanded = sourceMenuExpanded,
+                        onDismissRequest = { sourceMenuExpanded = false }
+                    ) {
+                        state.sources.forEach { source ->
+                            DropdownMenuItem(
+                                text = { Text(source.name) },
+                                onClick = {
+                                    sourceMenuExpanded = false
+                                    vm.selectSource(source.sourceId)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Search Icon
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (showSearchBar) MyBoxGold else MyBoxSurfaceRaised,
+                    border = if (showSearchBar) null else androidx.compose.foundation.BorderStroke(1.dp, MyBoxOutline),
+                    modifier = Modifier.clickable { showSearchBar = !showSearchBar }
+                ) {
+                    Box(modifier = Modifier.padding(8.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "搜索",
+                            tint = if (showSearchBar) Color(0xFF101217) else MyBoxTextPrimary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             }
-        } else if (!state.channelsLoading && state.sources.isNotEmpty()) {
-            StatusCard("选择一个已启用的直播源，然后点击“加载频道”。只有点选频道的“播放”按钮后才会解析线路并启动播放器。")
+        }
+
+        // 2. Search Input (if expanded)
+        if (showSearchBar) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = state.keyword,
+                    onValueChange = vm::updateKeyword,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("搜索频道名称或节目…", color = MyBoxTextMuted) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MyBoxSurfaceRaised,
+                        unfocusedContainerColor = MyBoxSurfaceRaised,
+                        focusedBorderColor = MyBoxGold,
+                        unfocusedBorderColor = MyBoxBorder,
+                        focusedTextColor = MyBoxTextPrimary,
+                        unfocusedTextColor = MyBoxTextPrimary,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        if (state.keyword.isNotBlank()) {
+                            IconButton(onClick = { vm.updateKeyword("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "清空", tint = MyBoxTextMuted)
+                            }
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+                )
+            }
+        }
+
+        // 3. Category Horizontal Chip Bar
+        if (categories.size > 1) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories) { category ->
+                    val isSelected = category == state.selectedCategory
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) Color(0xFFEEF1F5) else MyBoxSurfaceRaised,
+                        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, MyBoxBorder),
+                        modifier = Modifier.clickable { vm.selectCategory(category) }
+                    ) {
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Color(0xFF101217) else MyBoxTextSecondary,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 4. Status Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${filtered.size} 个频道",
+                style = MaterialTheme.typography.bodySmall,
+                color = MyBoxTextMuted
+            )
+            if (state.channelsLoading) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = MyBoxGold)
+                    Text("载入中…", style = MaterialTheme.typography.bodySmall, color = MyBoxGold)
+                }
+            }
+        }
+
+        // 5. Channel List
+        when {
+            state.channelsLoading && state.channels.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(color = MyBoxGold)
+                        Text("正在读取直播频道…", color = MyBoxTextSecondary, fontSize = 13.sp)
+                    }
+                }
+            }
+            filtered.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Radio, contentDescription = null, tint = MyBoxTextMuted, modifier = Modifier.size(36.dp))
+                        Text(
+                            if (state.keyword.isBlank()) "暂无直播频道" else "未找到与“${state.keyword}”相关的频道",
+                            color = MyBoxTextMuted,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 84.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    grouped.forEach { (cat, chList) ->
+                        if (state.selectedCategory == LiveBrowseViewModel.ALL_CATEGORIES) {
+                            item(key = "hdr:$cat") {
+                                Text(
+                                    text = "$cat (${chList.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MyBoxGold,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+                                )
+                            }
+                        }
+
+                        items(chList, key = { it.optString("sourceChannelId").ifBlank { it.optString("channelId") } }) { channel ->
+                            SangtianChannelCard(
+                                channel = channel,
+                                favorite = vm.isFavorite(channel),
+                                onPlay = { vm.openPlayback(channel) },
+                                onToggleFavorite = { vm.addFavorite(channel) }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
+/** Channel Card matching LiveFeature.jsx Sangtian styling */
 @Composable
-private fun LiveChannelCard(channel: JSONObject, favorite: Boolean, busy: Boolean, compact: Boolean, listStyle: Boolean, onFavorite: () -> Unit, onPlay: () -> Unit) {
+private fun SangtianChannelCard(
+    channel: JSONObject,
+    favorite: Boolean,
+    onPlay: () -> Unit,
+    onToggleFavorite: () -> Unit
+) {
     val name = channel.optString("name").ifBlank { "未命名频道" }
-    val category = channel.optString("category").ifBlank { "未分类" }
-    val streamCount = channel.optJSONArray("streams")?.length() ?: if (channel.optJSONObject("stream") != null) 1 else 0
-    Card(shape = RoundedCornerShape(if (listStyle) 8.dp else 16.dp), colors = CardDefaults.cardColors(containerColor = MyBoxSurfaceRaised), modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(if (compact) 9.dp else 13.dp), horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)) {
-                Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text("$category · ${if (streamCount > 0) "$streamCount 条线路描述" else "线路信息待解析"}", style = MaterialTheme.typography.bodySmall, color = MyBoxTextSecondary)
-                val description = channel.optString("description").trim()
-                if (description.isNotEmpty()) Text(description, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text("支持原生播放", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+    val category = channel.optString("category").ifBlank { "综合" }
+    val program = channel.optString("currentProgram").ifBlank { channel.optString("description") }.ifBlank { "高清电视直播" }
+    val streamCount = channel.optJSONArray("streams")?.length() ?: 1
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MyBoxSurfaceRaised,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MyBoxBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPlay)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Channel Brand Icon / Logo
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (name.contains("CCTV", ignoreCase = true)) Color(0xFFC026D3).copy(alpha = 0.2f)
+                        else Color(0xFFF59E0B).copy(alpha = 0.2f)
+                    )
+                    .border(
+                        1.dp,
+                        if (name.contains("CCTV", ignoreCase = true)) Color(0xFFC026D3).copy(alpha = 0.5f)
+                        else MyBoxGold.copy(alpha = 0.5f),
+                        RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (name.contains("CCTV", ignoreCase = true)) "CCTV" else category.take(2),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (name.contains("CCTV", ignoreCase = true)) Color(0xFFE879F9) else MyBoxGold
+                )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Button(onClick = onPlay) { Text("播放") }
-                OutlinedButton(onClick = onFavorite, enabled = !busy && !favorite) { Text(when { busy -> "保存中"; favorite -> "已收藏"; else -> "收藏" }) }
+
+            // Channel Info
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MyBoxTextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF10B981).copy(alpha = 0.2f))
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text("直播中", fontSize = 9.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Medium)
+                    }
+                }
+                Text(
+                    text = program,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MyBoxTextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "$category · $streamCount 条线路",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MyBoxTextMuted
+                )
+            }
+
+            // Action Buttons
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "收藏",
+                        tint = if (favorite) MyBoxHeart else MyBoxTextMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Button(
+                    onClick = onPlay,
+                    colors = ButtonDefaults.buttonColors(containerColor = MyBoxGold, contentColor = Color(0xFF101217)),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text("播放", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun StatusCard(message: String) {
-    Surface(shape = RoundedCornerShape(14.dp), color = MyBoxSurfaceRaised, modifier = Modifier.fillMaxWidth()) {
-        Text(message, modifier = Modifier.padding(13.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -218,7 +534,6 @@ private fun liveBrowseViewModelFactory(application: MyBoxApplication): ViewModel
     object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(LiveBrowseViewModel::class.java)) return LiveBrowseViewModel(application) as T
-            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+            return LiveBrowseViewModel(application) as T
         }
     }

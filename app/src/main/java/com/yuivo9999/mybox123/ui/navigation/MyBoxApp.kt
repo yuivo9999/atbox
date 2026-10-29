@@ -85,56 +85,54 @@ fun MyBoxApp(
         }
     }
 
+    val isFullScreen = uiState.destination == AppDestination.MOVIE_PLAYBACK
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MyBoxBackground,
-        topBar = {
-            Surface(
-                modifier = Modifier.statusBarsPadding(),
-                color = MyBoxSurface,
-                shadowElevation = 0.dp,
-            ) {
-                Text(
-                    text = "MyBox",
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        },
         bottomBar = {
-            Surface(
-                color = MyBoxSurface,
-                tonalElevation = 0.dp,
-            ) {
-                NavigationBar(
-                    containerColor = MyBoxSurface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
+            if (!isFullScreen) {
+                Surface(
+                    color = MyBoxSurface,
                     tonalElevation = 0.dp,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, com.yuivo9999.mybox123.ui.theme.MyBoxBorder),
                 ) {
-                    AppDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                            selected = uiState.destination == destination,
-                            onClick = {
-                        restoreHomeHistoryAfterDetail = false
-                        restoreHomeAfterContentPreviewDetail = false
-                        if (destination != AppDestination.MOVIES) {
-                            pendingMovieFavoriteJson = null
-                            pendingMovieSearchKeyword = null
-                        }
-                        if (destination != AppDestination.LIVE) pendingLiveFavoriteJson = null
-                        appViewModel.navigateTo(destination)
-                    },
-                            icon = {
-                                Icon(
-                                    imageVector = destinationIcon(destination),
-                                    contentDescription = destination.label,
+                    NavigationBar(
+                        containerColor = MyBoxSurface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        tonalElevation = 0.dp,
+                    ) {
+                        AppDestination.tabEntries.forEach { destination ->
+                            val isSelected = uiState.destination == destination
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = {
+                                    restoreHomeHistoryAfterDetail = false
+                                    restoreHomeAfterContentPreviewDetail = false
+                                    if (destination != AppDestination.MOVIES) {
+                                        pendingMovieFavoriteJson = null
+                                        pendingMovieSearchKeyword = null
+                                    }
+                                    if (destination != AppDestination.LIVE) pendingLiveFavoriteJson = null
+                                    appViewModel.navigateTo(destination)
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = destinationIcon(destination),
+                                        contentDescription = destination.label,
+                                    )
+                                },
+                                label = { Text(destination.label) },
+                                alwaysShowLabel = true,
+                                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                    selectedIconColor = com.yuivo9999.mybox123.ui.theme.MyBoxGold,
+                                    selectedTextColor = com.yuivo9999.mybox123.ui.theme.MyBoxGold,
+                                    indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                                    unselectedIconColor = com.yuivo9999.mybox123.ui.theme.MyBoxTextMuted,
+                                    unselectedTextColor = com.yuivo9999.mybox123.ui.theme.MyBoxTextMuted,
                                 )
-                            },
-                            label = { Text(destination.label) },
-                            alwaysShowLabel = true,
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -170,6 +168,10 @@ fun MyBoxApp(
                         restoreHomeAfterContentPreviewDetail = true
                         pendingMovieFavoriteJson = rawJson
                         appViewModel.navigateTo(AppDestination.MOVIES)
+                    },
+                    onPlayMovie = { movie ->
+                        pendingMoviePlayback = Pair(movie, movie.sourceId)
+                        appViewModel.navigateTo(AppDestination.MOVIE_PLAYBACK)
                     },
                     initialShowHistory = restoreHomeHistoryAfterDetail,
                     onHistoryDismissed = { restoreHomeHistoryAfterDetail = false },

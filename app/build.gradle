@@ -76,6 +76,7 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.9.4'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4'
+    implementation 'io.coil-kt:coil-compose:2.6.0'
 
     // User-authorized native live playback route (Batch 3, decision B).
     implementation 'androidx.media3:media3-exoplayer:1.8.0'
