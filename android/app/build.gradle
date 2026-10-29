@@ -1,0 +1,109 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+android {
+    namespace = "com.yuivo9999.mybox123"
+    compileSdk = rootProject.ext.compileSdkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig = true
+    }
+
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+
+    defaultConfig {
+        applicationId "com.yuivo9999.mybox123"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+
+    // Native UI foundation (Phase 1 of the WebView/React removal).
+    implementation platform('androidx.compose:compose-bom:2026.01.00')
+    implementation 'androidx.activity:activity-compose:1.11.0'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.9.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4'
+
+    // User-authorized native live playback route (Batch 3, decision B).
+    implementation 'androidx.media3:media3-exoplayer:1.8.0'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
+    implementation 'androidx.media3:media3-ui:1.8.0'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+
+
+    // Sandboxed JavaScript runtime for TVBox Drpy extensions. Network/file
+    // capabilities are not exposed directly to scripts; they are provided by
+    // the controlled runtime adapter.
+    implementation "org.mozilla:rhino:1.7.15"
+    // HTML DOM + CSS selector engine for Drpy jq/pdfh/pdfa/pd compatibility.
+    implementation "org.jsoup:jsoup:1.20.1"
+    // Native TVBox DoH transport. Uses the system resolver only for DoH bootstrap.
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+    implementation "com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0"
+}
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
