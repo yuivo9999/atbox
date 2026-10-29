@@ -1,0 +1,6 @@
+{
+  "name": "MyBox",
+  "description": "High-Performance Media Player & Live TV Aggregator with M3U and TVBox source support",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
